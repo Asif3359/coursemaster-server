@@ -11,6 +11,8 @@ require('./config/database');
 var indexRouter = require('./routes/index');
 var authRouter = require('./routes/authRoute');
 var courseRouter = require('./routes/courseRoute');
+var enrollmentRouter = require('./routes/enrollmentRoute');
+var dashboardRouter = require('./routes/dashboardRoute');
 var app = express();
 
 // view engine setup
@@ -26,6 +28,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/auth', authRouter);
 app.use('/courses', courseRouter);
+app.use('/enrollments', enrollmentRouter);
+app.use('/dashboard', dashboardRouter);
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
