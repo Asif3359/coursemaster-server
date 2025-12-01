@@ -13,6 +13,9 @@ var authRouter = require('./routes/authRoute');
 var courseRouter = require('./routes/courseRoute');
 var enrollmentRouter = require('./routes/enrollmentRoute');
 var dashboardRouter = require('./routes/dashboardRoute');
+var lessonRouter = require('./routes/lessonRoute');
+var assignmentRouter = require('./routes/assignmentRoute');
+var quizRouter = require('./routes/quizRoute');
 var app = express();
 
 // view engine setup
@@ -30,6 +33,9 @@ app.use('/auth', authRouter);
 app.use('/courses', courseRouter);
 app.use('/enrollments', enrollmentRouter);
 app.use('/dashboard', dashboardRouter);
+app.use('/lessons', lessonRouter);
+app.use('/api', assignmentRouter);
+app.use('/api', quizRouter);
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
   next(createError(404));
