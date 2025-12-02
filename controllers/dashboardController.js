@@ -2,14 +2,16 @@
 const Enrollment = require("../models/Enrollment");
 const LessonProgress = require("../models/LessonProgress");
 const Course = require("../models/Course");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/responseHandler");
 
 // GET /api/dashboard/enrollments
-const getEnrolledCourses = async (req, res) => {
+const getEnrolledCourses = async (req, res, next) => {
   try {
     const studentId = req.user && req.user.id;
 
     if (!studentId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      throw new ApiError(401, "Unauthorized");
     }
 
     const enrollments = await Enrollment.find({
@@ -17,30 +19,25 @@ const getEnrolledCourses = async (req, res) => {
       status: "active",
     }).sort({ createdAt: -1 });
 
-    res.status(200).json({
-      message: "Enrolled courses fetched successfully",
-      data: enrollments,
-    });
+    sendResponse(res, 200, "Enrolled courses fetched successfully", enrollments);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // GET /api/dashboard/courses/:courseId/progress
-const getCourseProgress = async (req, res) => {
+const getCourseProgress = async (req, res, next) => {
   try {
     const studentId = req.user && req.user.id;
     const { courseId } = req.params;
 
     if (!studentId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      throw new ApiError(401, "Unauthorized");
     }
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
     const totalLessons = course.syllabus.length;
@@ -56,19 +53,14 @@ const getCourseProgress = async (req, res) => {
         ? Math.round((completedCount / totalLessons) * 100)
         : 0;
 
-    res.status(200).json({
-      message: "Course progress fetched successfully",
-      data: {
-        courseId,
-        totalLessons,
-        completedLessons: completedCount,
-        percentage,
-      },
+    sendResponse(res, 200, "Course progress fetched successfully", {
+      courseId,
+      totalLessons,
+      completedLessons: completedCount,
+      percentage,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
