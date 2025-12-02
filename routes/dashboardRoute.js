@@ -14,7 +14,6 @@ const requireRole = require("../middleware/role");
 router.get(
   "/dashboard/enrollments",
   auth,
-  requireRole("user"),
   getEnrolledCourses
 );
 
