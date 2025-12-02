@@ -1,6 +1,6 @@
-# CourseMaster Client
+# CourseMaster server
 
-A Next.js client application for CourseMaster, a full-featured E-learning platform. Students can browse, purchase, and consume courses. Administrators can manage courses, track enrollments, and review assignments.
+A Express.js server application for CourseMaster, a full-featured E-learning platform. Students can browse, purchase, and consume courses. Administrators can manage courses, track enrollments, and review assignments.
 
 **Live Link**: [https://coursemaster-client.vercel.app](https://coursemaster-client.vercel.app)
 **Live Link-backend**: [https://coursemaster-server.onrender.com](https://coursemaster-server.onrender.com)
