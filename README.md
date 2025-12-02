@@ -28,7 +28,14 @@ The application will be available at `http://localhost:3000`
 Create a `.env.local` file in the root directory:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
+MONGODB_URI=mongodb://localhost:27017/coursemaster
+JWT_SECRET=your_jwt_secret
+PORT=3000
+EMAIL_USER=asifahammednishst@gmail.com
+EMAIL_PASS=app_pass
+EMAIL_FROM=Qurrota <noreply@resend.dev>
+NODE_ENV=production
+RESEND_API_KEY=resend_api_key
 ```
 
 ## API Documentation
