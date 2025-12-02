@@ -3,20 +3,12 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 const ApiError = require("../utils/ApiError");
 const sendResponse = require("../utils/responseHandler");
 
-// configure nodemailer transport using environment variables
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// initialize Resend with API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const register = async (req, res, next) => {
   try {
@@ -29,8 +21,8 @@ const register = async (req, res, next) => {
     });
 
     try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM || "Qurrota <noreply@qurrota.com>",
         to: user.email,
         subject: "Welcome to CourseMaster",
         text: `Hi ${user.username}, your account has been created successfully.`,
