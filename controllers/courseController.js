@@ -1,10 +1,13 @@
 // controllers/courseController.js
 const Course = require("../models/Course");
 const Batch = require("../models/Batch");
+const User = require("../models/User");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/responseHandler");
 
 // Public: GET /api/courses
 // Query params: page, limit, search, instructor, sort (price_asc|price_desc), category, tags (comma-separated)
-const getCourses = async (req, res) => {
+const getCourses = async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -71,28 +74,23 @@ const getCourses = async (req, res) => {
       Course.countDocuments(filter),
     ]);
 
-    res.status(200).json({
-      message: "Courses fetched successfully",
-      data: {
-        items: courses,
-        pagination: {
-          total,
-          page: pageNum,
-          limit: limitNum,
-          pages: Math.ceil(total / limitNum),
-        },
+    sendResponse(res, 200, "Courses fetched successfully", {
+      items: courses,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        pages: Math.ceil(total / limitNum),
       },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Public: GET /api/courses/:id
 // Includes syllabus and active batches summary
-const getCourseById = async (req, res) => {
+const getCourseById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -102,29 +100,24 @@ const getCourseById = async (req, res) => {
     });
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
     const batches = await Batch.find({ course: id, isActive: true }).select(
       "name startDate endDate capacity isActive"
     );
 
-    res.status(200).json({
-      message: "Course fetched successfully",
-      data: {
-        course,
-        batches,
-      },
+    sendResponse(res, 200, "Course fetched successfully", {
+      course,
+      batches,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: POST /api/admin/courses
-const createCourse = async (req, res) => {
+const createCourse = async (req, res, next) => {
   try {
     const {
       title,
@@ -137,33 +130,76 @@ const createCourse = async (req, res) => {
       isActive = true,
     } = req.body;
 
+    // Handle instructor: if it's a string (email/username), find the user
+    let instructorId = instructor;
+    if (typeof instructor === "string" && !instructor.match(/^[0-9a-fA-F]{24}$/)) {
+      // Not a valid ObjectId, try to find user by email or username
+      const user = await User.findOne({
+        $or: [{ email: instructor }, { username: instructor }],
+      });
+      if (!user) {
+        throw new ApiError(404, "Instructor not found. Please provide a valid user email or username.");
+      }
+      instructorId = user._id;
+    }
+
+    // Convert price to number if it's a string
+    const coursePrice = typeof price === "string" ? parseFloat(price) : price;
+
+    // Handle tags: if undefined/null, use empty array; if string, split by comma; if array, use as-is
+    let courseTags = [];
+    if (tags) {
+      if (Array.isArray(tags)) {
+        courseTags = tags;
+      } else if (typeof tags === "string") {
+        courseTags = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      }
+    }
+
     const course = await Course.create({
       title,
       description,
-      instructor,
+      instructor: instructorId,
       syllabus,
-      price,
+      price: coursePrice,
       category,
-      tags,
+      tags: courseTags,
       isActive,
     });
 
-    res.status(201).json({
-      message: "Course created successfully",
-      data: course,
-    });
+    sendResponse(res, 201, "Course created successfully", course);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: PUT /api/admin/courses/:id
-const updateCourse = async (req, res) => {
+const updateCourse = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    // Handle instructor: if it's a string (email/username), find the user
+    if (updates.instructor && typeof updates.instructor === "string" && !updates.instructor.match(/^[0-9a-fA-F]{24}$/)) {
+      // Not a valid ObjectId, try to find user by email or username
+      const user = await User.findOne({
+        $or: [{ email: updates.instructor }, { username: updates.instructor }],
+      });
+      if (!user) {
+        throw new ApiError(404, "Instructor not found. Please provide a valid user email or username.");
+      }
+      updates.instructor = user._id;
+    }
+
+    // Convert price to number if it's a string
+    if (updates.price && typeof updates.price === "string") {
+      updates.price = parseFloat(updates.price);
+    }
+
+    // Handle tags: if string, convert to array
+    if (updates.tags && typeof updates.tags === "string") {
+      updates.tags = updates.tags.split(",").map((t) => t.trim()).filter(Boolean);
+    }
 
     const course = await Course.findByIdAndUpdate(id, updates, {
       new: true,
@@ -171,50 +207,41 @@ const updateCourse = async (req, res) => {
     });
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
-    res.status(200).json({
-      message: "Course updated successfully",
-      data: course,
-    });
+    sendResponse(res, 200, "Course updated successfully", course);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: DELETE /api/admin/courses/:id
-const deleteCourse = async (req, res) => {
+const deleteCourse = async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const course = await Course.findByIdAndDelete(id);
 
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
-    res.status(200).json({
-      message: "Course deleted successfully",
-    });
+    sendResponse(res, 200, "Course deleted successfully");
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: POST /api/admin/courses/:courseId/batches
-const createBatch = async (req, res) => {
+const createBatch = async (req, res, next) => {
   try {
     const { courseId } = req.params;
     const { name, startDate, endDate, capacity, isActive = true } = req.body;
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
     const batch = await Batch.create({
@@ -226,19 +253,14 @@ const createBatch = async (req, res) => {
       isActive,
     });
 
-    res.status(201).json({
-      message: "Batch created successfully",
-      data: batch,
-    });
+    sendResponse(res, 201, "Batch created successfully", batch);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: PUT /api/admin/batches/:batchId
-const updateBatch = async (req, res) => {
+const updateBatch = async (req, res, next) => {
   try {
     const { batchId } = req.params;
     const updates = req.body;
@@ -249,63 +271,49 @@ const updateBatch = async (req, res) => {
     });
 
     if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+      throw new ApiError(404, "Batch not found");
     }
 
-    res.status(200).json({
-      message: "Batch updated successfully",
-      data: batch,
-    });
+    sendResponse(res, 200, "Batch updated successfully", batch);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: DELETE /api/admin/batches/:batchId
-const deleteBatch = async (req, res) => {
+const deleteBatch = async (req, res, next) => {
   try {
     const { batchId } = req.params;
 
     const batch = await Batch.findByIdAndDelete(batchId);
 
     if (!batch) {
-      return res.status(404).json({ message: "Batch not found" });
+      throw new ApiError(404, "Batch not found");
     }
 
-    res.status(200).json({
-      message: "Batch deleted successfully",
-    });
+    sendResponse(res, 200, "Batch deleted successfully");
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: GET /api/admin/courses/:courseId/batches
-const getBatchesForCourse = async (req, res) => {
+const getBatchesForCourse = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
     const batches = await Batch.find({ course: courseId }).sort({
       startDate: 1,
     });
 
-    res.status(200).json({
-      message: "Batches fetched successfully",
-      data: batches,
-    });
+    sendResponse(res, 200, "Batches fetched successfully", batches);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 

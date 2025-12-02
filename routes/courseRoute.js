@@ -15,13 +15,15 @@ const {
 
 const auth = require("../middleware/auth");
 const requireRole = require("../middleware/role");
+const validate = require("../middleware/validate");
+const { createCourseSchema } = require("../validators/courseValidator");
 
 // Public routes
 router.get("/courses", getCourses);
 router.get("/courses/:id", getCourseById);
 
 // Admin-only routes
-router.post("/admin/courses", auth, requireRole("admin"), createCourse);
+router.post("/admin/courses", auth, requireRole("admin"), validate(createCourseSchema), createCourse);
 router.put("/admin/courses/:id", auth, requireRole("admin"), updateCourse);
 router.delete("/admin/courses/:id", auth, requireRole("admin"), deleteCourse);
 

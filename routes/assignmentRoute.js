@@ -56,12 +56,19 @@ router.put(
 );
 
 // Student routes
+router.get(
+  "/assignments/courses/:courseId",
+  auth,
+  requireRole("user"),
+  getAssignmentsForCourse
+);
 router.post(
   "/assignments/:assignmentId/submit",
   auth,
   requireRole("user"),
   submitAssignment
 );
+
 
 module.exports = router;
 

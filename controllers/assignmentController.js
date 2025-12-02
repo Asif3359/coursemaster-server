@@ -2,6 +2,8 @@
 const Assignment = require("../models/Assignment");
 const AssignmentSubmission = require("../models/AssignmentSubmission");
 const Course = require("../models/Course");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/responseHandler");
 
 // Admin: POST /api/admin/assignments
 const createAssignment = async (req, res) => {
@@ -179,55 +181,45 @@ const submitAssignment = async (req, res) => {
 };
 
 // Admin: GET /api/admin/assignments/:assignmentId/submissions
-const getSubmissionsForAssignment = async (req, res) => {
+const getSubmissionsForAssignment = async (req, res, next) => {
   try {
     const { assignmentId } = req.params;
 
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
-      return res.status(404).json({ message: "Assignment not found" });
+      throw new ApiError(404, "Assignment not found");
     }
 
     const submissions = await AssignmentSubmission.find({
       assignment: assignmentId,
     });
 
-    res.status(200).json({
-      message: "Submissions fetched successfully",
-      data: submissions,
-    });
+    sendResponse(res, 200, "Submissions fetched successfully", submissions);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: GET /api/admin/courses/:courseId/submissions
-const getSubmissionsForCourse = async (req, res) => {
+const getSubmissionsForCourse = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      throw new ApiError(404, "Course not found");
     }
 
     const submissions = await AssignmentSubmission.find({ course: courseId });
 
-    res.status(200).json({
-      message: "Submissions fetched successfully",
-      data: submissions,
-    });
+    sendResponse(res, 200, "Submissions fetched successfully", submissions);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
 // Admin: PUT /api/admin/submissions/:submissionId/review
-const reviewSubmission = async (req, res) => {
+const reviewSubmission = async (req, res, next) => {
   try {
     const { submissionId } = req.params;
     const { status, feedback, grade } = req.body;
@@ -243,17 +235,12 @@ const reviewSubmission = async (req, res) => {
     );
 
     if (!submission) {
-      return res.status(404).json({ message: "Submission not found" });
+      throw new ApiError(404, "Submission not found");
     }
 
-    res.status(200).json({
-      message: "Submission reviewed successfully",
-      data: submission,
-    });
+    sendResponse(res, 200, "Submission reviewed successfully", submission);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
