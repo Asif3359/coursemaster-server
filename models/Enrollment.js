@@ -38,25 +38,47 @@ const enrollmentSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance
 enrollmentSchema.index({ student: 1, course: 1, batch: 1 }, { unique: true });
+enrollmentSchema.index({ student: 1 });
+enrollmentSchema.index({ course: 1 });
+enrollmentSchema.index({ status: 1 });
 
 // Auto-populate common refs to avoid N+1 query patterns
 function autoPopulateEnrollment(next) {
-  this.populate([
-    {
-      path: "student",
-      select: "username email role status",
-    },
-    {
-      path: "course",
-      select: "title price category isActive",
-    },
-    {
-      path: "batch",
-      select: "name startDate endDate isActive",
-    },
-  ]);
-  next();
+  if (typeof next === 'function') {
+    this.populate([
+      {
+        path: "student",
+        select: "username email role status",
+      },
+      {
+        path: "course",
+        select: "title price category isActive",
+      },
+      {
+        path: "batch",
+        select: "name startDate endDate isActive",
+      },
+    ]);
+    next();
+  } else {
+    // If next is not provided, just populate
+    this.populate([
+      {
+        path: "student",
+        select: "username email role status",
+      },
+      {
+        path: "course",
+        select: "title price category isActive",
+      },
+      {
+        path: "batch",
+        select: "name startDate endDate isActive",
+      },
+    ]);
+  }
 }
 
 enrollmentSchema.pre("find", autoPopulateEnrollment);

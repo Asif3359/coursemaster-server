@@ -67,7 +67,10 @@ function autoPopulateAssignmentSubmission(next) {
       select: "title category",
     },
   ]);
-  next();
+  
+  if (typeof next === "function") {
+    next();
+  }
 }
 
 assignmentSubmissionSchema.pre("find", autoPopulateAssignmentSubmission);

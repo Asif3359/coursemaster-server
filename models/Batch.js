@@ -36,18 +36,7 @@ const batchSchema = new mongoose.Schema(
   }
 );
 
-// Helpful when listing batches with their course details
-function autoPopulateBatch(next) {
-  this.populate({
-    path: "course",
-    select: "title category price",
-  });
-  next();
-}
 
-batchSchema.pre("find", autoPopulateBatch);
-batchSchema.pre("findOne", autoPopulateBatch);
-batchSchema.pre("findOneAndUpdate", autoPopulateBatch);
 
 const Batch = mongoose.model("Batch", batchSchema);
 

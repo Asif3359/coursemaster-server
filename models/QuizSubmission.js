@@ -54,7 +54,10 @@ function autoPopulateQuizSubmission(next) {
       select: "title category",
     },
   ]);
-  next();
+
+  if (typeof next === "function") {
+    next();
+  }
 }
 
 quizSubmissionSchema.pre("find", autoPopulateQuizSubmission);

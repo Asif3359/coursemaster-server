@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
+const ApiError = require("../utils/ApiError");
+const sendResponse = require("../utils/responseHandler");
 
 // configure nodemailer transport using environment variables
 const transporter = nodemailer.createTransport({
@@ -16,7 +18,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -38,45 +40,39 @@ const register = async (req, res) => {
       console.error("Error sending registration email:", mailError);
     }
 
-    res.status(201).json({ message: "User created successfully", user });
+    sendResponse(res, 201, "User created successfully", { user });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      throw new ApiError(401, "Invalid credentials");
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      throw new ApiError(401, "Invalid credentials");
     }
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "30d" }
     );
-    res.status(200).json({ message: "Login successful", token });
+    sendResponse(res, 200, "Login successful", { token, user: { id: user._id, username: user.username, email: user.email, role: user.role } });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
-const logout = async (req, res) => {
+const logout = async (req, res, next) => {
   try {
-    res.status(200).json({ message: "Logout successful" });
+    sendResponse(res, 200, "Logout successful");
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    next(error);
   }
 };
 
